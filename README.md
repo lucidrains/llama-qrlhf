@@ -2,6 +2,8 @@
 
 Implementation of the Llama (or any language model) architecture with RLHF + Q-learning.
 
+This is experimental / independent open research, built off nothing but speculation. But I'll throw some of my brain cycles at the problem in the coming month, just in case the rumors have any basis. Anything you PhD students can get working is up for grabs.
+
 Will start off by adapting the autoregressive discrete Q-learning formulation in the cited paper below and run a few experiments on arithmetic, using a symbolic solver as reward generator.
 
 ## Citations
