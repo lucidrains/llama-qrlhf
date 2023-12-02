@@ -39,7 +39,7 @@ def autoregressive_q_learn(
     eos_id:         Optional[int] = None,          # calculate the done from the <eos> token id
     discount_gamma: float = 0.998                  # reward discount factor, encourages brevity of generated answer
 
-) -> Tensor:
+) -> TensorType[()]:
     """
     einops
 
@@ -47,7 +47,23 @@ def autoregressive_q_learn(
     n - sequence len
     """
 
-    batch, seq_len = states.shape, states.device
+    # because greek unicode is nice to look at
+
+    γ = discount_gamma
+
+    # get predicted Q for each action
+
+    q_pred_all_actions = model(states)
+    q_pred = batch_select_indices(q_pred_all_actions, actions)
+
+    # append next state to current one, for deriving q target
+
+    q_target_input = pack([states[:, 1:], next_state], 'b *')
+
+    # get target Q
+
+    q_target = ema_model(q_target_input)
+    q_target = q_target_all_actions.max(dim = -1).values
 
     # anything after the first done flag will be considered terminal
 
@@ -61,47 +77,28 @@ def autoregressive_q_learn(
         # rewards should not be given on and after terminal step
 
         rewards = rewards * not_terminal
-
-    # because greek unicode is nice to look at
-
-    γ = self.discount_factor_gamma
-
-    # get predicted Q for each action
-
-    q_pred_all_actions = model(states)
-    q_pred = batch_select_indices(q_pred_all_actions, actions)
-
-    # get q_next
-
-    q_next = ema_model(next_states)
-    q_next = q_next.max(dim = -1).values
-
-    # get target Q
-
-    q_target_all_actions = ema_model(states)
-    q_target = q_target_all_actions.max(dim = -1).values
+        q_target = q_target.masked_fill(dones, 0.)
 
     # main contribution of the paper is the following logic
     # section 4.1 - eq. 1
 
-    # first take care of the loss for all actions except for the very last one
+    # where a reward is not given, Q pred for time t is the max(Q target) of t + 1
 
-    q_pred_rest_actions, q_pred_last_action      = q_pred[..., :-1], q_pred[..., -1]
-    q_target_first_action, q_target_rest_actions = q_target[..., 0], q_target[..., 1:]
+    losses_without_rewards = F.mse_loss(q_pred, q_target, reduction = 'none')
 
-    losses_all_actions_but_last = F.mse_loss(q_pred_rest_actions, q_target_rest_actions, reduction = 'none')
+    # take care of the time steps with rewards given. classic Bellman's
 
-    # next take care of the very last action, which incorporates the rewards
+    q_target_with_rewards = rewards + γ * q_target
 
-    q_target_last_action, _ = pack([q_target_first_action[..., 1:], q_next], 'b *')
+    losses_with_rewards = F.mse_loss(q_pred, q_target_with_rewards, reduction = 'none')
 
-    q_target_last_action = rewards + γ * q_target_last_action
+    # final losses
 
-    losses_last_action = F.mse_loss(q_pred_last_action, q_target_last_action, reduction = 'none')
-
-    # flatten and average
-
-    losses, _ = pack([losses_all_actions_but_last, losses_last_action], '*')
+    losses = torch.where(
+        rewards > 0.,
+        losses_with_reward,
+        losses_without_rewards
+    )
 
     return losses.mean()
 
