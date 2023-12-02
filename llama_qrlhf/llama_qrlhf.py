@@ -4,6 +4,8 @@ from torch.nn import Module
 
 from einops import rearrange, repeat
 
+from ema_pytorch import EMA
+
 from beartype import beartype
 
 from torchtyping import TensorType

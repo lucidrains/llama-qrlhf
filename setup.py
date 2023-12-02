@@ -18,6 +18,7 @@ setup(
   ],
   install_requires=[
     'beartype',
+    'ema-pytorch',
     'einops>=0.7.0',
     'torch>=2.0'
   ],
