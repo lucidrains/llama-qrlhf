@@ -1,12 +1,14 @@
 import torch
-from torch import nn, einsum, Tensor
 from torch.nn import Module
+from torch.utils.data import Dataset
+from torch import nn, einsum, Tensor
 
 from einops import rearrange, repeat
 
 from ema_pytorch import EMA
 
 from beartype import beartype
+from beartype.typing import Optional
 
 from torchtyping import TensorType
 
@@ -109,9 +111,16 @@ class QRLHF(Module):
     @beartype
     def __init__(
         self,
-        model: Module
+        model: Module,
+        dataset: Dataset,
+        ema_kwargs: dict = dict(
+            beta = 0.99
+        )
     ):
         super().__init__()
+
+        self.lm = model
+        self.lm_target = EMA(model, **ema_kwargs)
 
     def forward(self):
         raise NotImplementedError
