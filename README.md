@@ -6,6 +6,8 @@ This is experimental / independent open research, built off nothing but speculat
 
 Will start off by adapting the autoregressive discrete Q-learning formulation in the cited paper below and run a few experiments on arithmetic, using a symbolic solver as reward generator.
 
+<a href="https://www.youtube.com/watch?v=nOBm4aYEYR4">Yannic Kilcher's educational Q-learning video</a>
+
 ## Citations
 
 ```bibtex
