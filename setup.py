@@ -17,6 +17,7 @@ setup(
     'q learning',
   ],
   install_requires=[
+    'beartype',
     'einops>=0.7.0',
     'torch>=2.0'
   ],
