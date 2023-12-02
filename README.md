@@ -1,4 +1,4 @@
-## Llama - QRLHF
+## Llama - QRLHF (wip)
 
 Implementation of the Llama (or any language model) architecture with RLHF + Q-learning.
 
