@@ -46,6 +46,7 @@ def autoregressive_q_learn(
     b - batch
     n - sequence len
     """
+    seq_len, device = states.shape[-1], states.device
 
     # because greek unicode is nice to look at
 
@@ -99,6 +100,12 @@ def autoregressive_q_learn(
         losses_with_reward,
         losses_without_rewards
     )
+
+    # perform a masked mean
+    # as only the 'q logits' starting from the last token of the prompt is considered an 'action'
+
+    is_action_mask = torch.arange(seq_len, device = device) > rearrange(prompt_len - 1, 'b -> b 1')
+    losses = losses[is_action_mask]
 
     return losses.mean()
 
