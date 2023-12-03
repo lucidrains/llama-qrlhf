@@ -109,6 +109,13 @@ def autoregressive_q_learn(
 
     return losses.mean()
 
+def conservative_regularization_loss(
+    q_values: TensorType['b', 'n', 'a', float],
+    actions: TensorType['b', 'n', int],
+    action_mask: TensorType['b', 'n'],
+):
+    raise NotImplementedError
+
 # main classes
 
 class QRLHF(Module):
