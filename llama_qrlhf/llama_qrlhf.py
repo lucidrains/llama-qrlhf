@@ -2,6 +2,7 @@ import torch
 from torch.nn import Module
 from torch.utils.data import Dataset
 from torch import nn, einsum, Tensor
+import torch.nn.functional as F
 
 from einops import rearrange, repeat
 
@@ -111,10 +112,21 @@ def autoregressive_q_learn(
 
 def conservative_regularization_loss(
     q_values: TensorType['b', 'n', 'a', float],
-    actions: TensorType['b', 'n', int],
-    action_mask: TensorType['b', 'n'],
-):
-    raise NotImplementedError
+    states_and_actions: TensorType['b', 'n', int],
+    action_mask: TensorType['b', 'n', bool],
+    reward_min: float = 0.
+) -> TensorType[()]:
+
+    batch, seq_len, num_actions, device = *q_values.shape, q_values.device
+    non_dataset_actions = torch.arange(num_actions, device = device) == rearrange(states_and_actions, '... -> ... 1')
+
+    q_values = q_values[~non_dataset_actions]
+    q_values = rearrange(q_values, '(b n a) -> b n a', b = batch, n = seq_len)
+    q_values = q_values[action_mask]
+
+    reward_min = torch.full((), reward_min, device = device) * seq_len
+
+    return F.mse_loss(q_values, reward_min)
 
 # main classes
 
