@@ -16,7 +16,8 @@ setup(
     'reinforcement learning with human feedback',
     'q learning',
   ],
-  install_requires=[
+  install_requires = [
+    'accelerate',
     'beartype',
     'ema-pytorch',
     'einops>=0.7.0',

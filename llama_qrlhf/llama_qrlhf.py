@@ -13,6 +13,8 @@ from beartype.typing import Optional
 
 from torchtyping import TensorType
 
+from accelerate import Accelerator
+
 # helper functions
 
 def exists(v):
@@ -111,10 +113,10 @@ def autoregressive_q_learn(
     return losses.mean()
 
 def conservative_regularization_loss(
-    q_values: TensorType['b', 'n', 'a', float],
+    q_values:           TensorType['b', 'n', 'a', float],
     states_and_actions: TensorType['b', 'n', int],
-    action_mask: TensorType['b', 'n', bool],
-    reward_min: float = 0.
+    action_mask:        TensorType['b', 'n', bool],
+    reward_min:         float = 0.
 ) -> TensorType[()]:
 
     batch, seq_len, num_actions, device = *q_values.shape, q_values.device
@@ -134,8 +136,9 @@ class QRLHF(Module):
     @beartype
     def __init__(
         self,
-        model: Module,
+        model:   Module,
         dataset: Dataset,
+        accelerate_kwargs: dict = dict(),
         ema_kwargs: dict = dict(
             beta = 0.99
         )
