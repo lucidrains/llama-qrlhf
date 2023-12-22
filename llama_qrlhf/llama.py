@@ -3,7 +3,7 @@ from torch.nn import Module, ModuleList
 from torch import nn, einsum, Tensor
 import torch.nn.functional as F
 
-from einops import rearrange
+from einops import rearrange, reduce
 from einops.layers.torch import Rearrange
 
 # helpers
@@ -102,6 +102,43 @@ class Attention(Module):
 
         return self.to_out(out)
 
+# Q head
+
+class DuelingHead(Module):
+    def __init__(
+        self,
+        *,
+        dim,
+        num_tokens,
+        expansion_factor = 2,
+    ):
+        super().__init__()
+        dim_hidden = int(dim * expansion_factor)
+
+        self.stem = nn.Sequential(
+            nn.Linear(dim, dim_hidden),
+            nn.SiLU()
+        )
+
+        self.to_values = nn.Sequential(
+            nn.Linear(dim_hidden, 1)
+        )
+
+        self.to_advantages = nn.Sequential(
+            nn.Linear(dim_hidden, num_tokens)
+        )
+
+    def forward(self, x):
+        x = self.stem(x)
+
+        advantages = self.to_advantages(x)
+        advantages = advantages - reduce(advantages, '... a -> ... 1', 'mean')
+
+        values = self.to_values(x)
+
+        q_values = values + advantages
+        return q_values
+
 # llama
 
 class Llama(Module):
@@ -113,7 +150,9 @@ class Llama(Module):
         depth,
         dim_head = 64,
         heads = 8,
-        ff_mult = 4
+        ff_mult = 4,
+        dueling_q_head = False,
+        dueling_q_head_expansion_factor = 2
     ):
         super().__init__()
 
@@ -130,8 +169,12 @@ class Llama(Module):
 
         self.final_norm = RMSNorm(dim)
 
-        self.to_q = nn.Linear(dim, num_tokens)
         self.to_logits = nn.Linear(dim, num_tokens)
+
+        if dueling_q_head:
+            self.to_q = DuelingHead(num_tokens = num_tokens, dim = dim, expansion_factor = dueling_q_head_expansion_factor)
+        else:
+            self.to_q = nn.Linear(dim, num_tokens)
 
     def forward(
         self,
@@ -154,4 +197,4 @@ class Llama(Module):
         if not return_q_values:
             return logits
 
-        return logits, self.to_q_values(embed)
+        return logits, self.to_q(embed)

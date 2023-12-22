@@ -18,3 +18,13 @@ Will start off by adapting the autoregressive discrete Q-learning formulation in
     year   = {2023}
 }
 ```
+
+```bibtex
+@inproceedings{Wang2015DuelingNA,
+    title   = {Dueling Network Architectures for Deep Reinforcement Learning},
+    author  = {Ziyun Wang and Tom Schaul and Matteo Hessel and H. V. Hasselt and Marc Lanctot and Nando de Freitas},
+    booktitle = {International Conference on Machine Learning},
+    year    = {2015},
+    url     = {https://api.semanticscholar.org/CorpusID:5389801}
+}
+```
