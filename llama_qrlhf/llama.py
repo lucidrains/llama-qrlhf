@@ -129,9 +129,15 @@ class Llama(Module):
             ]))
 
         self.final_norm = RMSNorm(dim)
+
+        self.to_q = nn.Linear(dim, num_tokens)
         self.to_logits = nn.Linear(dim, num_tokens)
 
-    def forward(self, x):
+    def forward(
+        self,
+        x,
+        return_q_values = False
+    ):
         seq_len, device = x.shape[-1], x.device
 
         x = self.token_emb(x)
@@ -142,5 +148,10 @@ class Llama(Module):
             x = attn(x, rotary_emb = rotary_emb) + x
             x = ff(x) + x
 
-        x = self.final_norm(x)
-        return self.to_logits(x)
+        embed = self.final_norm(x)
+        logits = self.to_logits(embed)
+
+        if not return_q_values:
+            return logits
+
+        return logits, self.to_q_values(embed)
