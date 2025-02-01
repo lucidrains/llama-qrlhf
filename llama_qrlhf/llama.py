@@ -1,7 +1,7 @@
 import torch
-from torch.nn import Module, ModuleList
-from torch import nn, einsum, Tensor
 import torch.nn.functional as F
+from torch.nn import Module, ModuleList, RMSNorm
+from torch import nn, einsum, Tensor
 
 from einops import rearrange, reduce
 from einops.layers.torch import Rearrange
@@ -10,17 +10,6 @@ from einops.layers.torch import Rearrange
 
 def exists(v):
     return v is not None
-
-# norm
-
-class RMSNorm(Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.scale = dim ** 0.5
-        self.gamma = nn.Parameter(torch.ones(dim))
-
-    def forward(self, x):
-        return F.normalize(x, dim = -1) * self.scale * self.gamma
 
 # rotary
 
@@ -51,6 +40,7 @@ class GEGLU(Module):
 
 def FeedForward(dim, mult = 4):
     dim_hidden = int(dim * mult * 2 / 3)
+
     return nn.Sequential(
         RMSNorm(dim),
         nn.Linear(dim, dim_hidden * 2),
