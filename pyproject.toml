@@ -25,10 +25,11 @@ classifiers=[
 
 dependencies = [
     'accelerate',
-    'beartype',
     'ema-pytorch',
+    'einx>=0.3.0',
     'einops>=0.8.0',
-    'torch>=2.0'
+    'jaxtyping',
+    'torch>=2.2'
 ]
 
 [project.urls]

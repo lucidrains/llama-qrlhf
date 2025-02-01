@@ -1,31 +1,41 @@
+from __future__ import annotations
+
 import torch
 from torch.nn import Module
 from torch.utils.data import Dataset
 from torch import nn, einsum, Tensor
 import torch.nn.functional as F
 
+from einx import get_at
 from einops import rearrange, repeat
 
 from ema_pytorch import EMA
 
-from beartype import beartype
-from beartype.typing import Optional
-
-from torchtyping import TensorType
-
 from accelerate import Accelerator
+
+# tensor typing
+
+import jaxtyping
+from jaxtyping import jaxtyped
+
+class TorchTyping:
+    def __init__(self, abstract_dtype):
+        self.abstract_dtype = abstract_dtype
+
+    def __getitem__(self, shapes: str):
+        return self.abstract_dtype[Tensor, shapes]
+
+Float = TorchTyping(jaxtyping.Float)
+Int   = TorchTyping(jaxtyping.Int)
+Bool  = TorchTyping(jaxtyping.Bool)
 
 # helper functions
 
 def exists(v):
     return v is not None
 
-# tensor helpers
-
-def batch_select_indices(t, indices):
-    indices = rearrange(indices, '... -> ... 1')
-    selected = t.gather(-1, indices)
-    return rearrange(selected, '... 1 -> ...')
+def default(v, d):
+    return v if exists(v) else d
 
 # Q functions
 
@@ -35,11 +45,11 @@ def batch_select_indices(t, indices):
 def autoregressive_q_learn(
     model:          Module,
     ema_model:      Module,
-    states:         TensorType['b', 'n', int],     # the entire sequence, containing prompt and generated
-    prompt_len:     TensorType['b', int],          # the length of the sequence that is the preceding prompt
-    next_states:    TensorType['b', int],          # selected action becomes the next state
-    rewards:        TensorType['b', 'n', float],   # the reward could be given at the very end, or interspersed (say the language model made a first correct reasoning then fails later on)
-    eos_id:         Optional[int] = None,          # calculate the done from the <eos> token id
+    states:         Int['b n'],     # the entire sequence, containing prompt and generated
+    prompt_len:     Int['b n'],     # the length of the sequence that is the preceding prompt
+    next_states:    Int['b'],       # selected action becomes the next state
+    rewards:        Float['b n'],   # the reward could be given at the very end, or interspersed (say the language model made a first correct reasoning then fails later on)
+    eos_id:         int | None = None,          # calculate the done from the <eos> token id
     discount_gamma: float = 0.998                  # reward discount factor, encourages brevity of generated answer
 
 ) -> TensorType[()]:
@@ -58,7 +68,7 @@ def autoregressive_q_learn(
     # get predicted Q for each action
 
     q_pred_all_actions = model(states)
-    q_pred = batch_select_indices(q_pred_all_actions, actions)
+    q_pred = get_at('b n [l], b n -> b n', q_pred_all_actions, actions)
 
     # append next state to current one, for deriving q target
 
@@ -113,9 +123,9 @@ def autoregressive_q_learn(
     return losses.mean()
 
 def conservative_regularization_loss(
-    q_values:           TensorType['b', 'n', 'a', float],
-    states_and_actions: TensorType['b', 'n', int],
-    action_mask:        TensorType['b', 'n', bool],
+    q_values:           Float['b n a'],
+    states_and_actions: Int['b n'],
+    action_mask:        Bool['b n'],
     reward_min:         float = 0.
 ) -> TensorType[()]:
 
@@ -133,7 +143,6 @@ def conservative_regularization_loss(
 # main classes
 
 class QRLHF(Module):
-    @beartype
     def __init__(
         self,
         model:   Module,
