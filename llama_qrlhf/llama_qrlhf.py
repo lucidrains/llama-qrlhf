@@ -52,7 +52,7 @@ def autoregressive_q_learn(
     eos_id:         int | None = None,          # calculate the done from the <eos> token id
     discount_gamma: float = 0.998                  # reward discount factor, encourages brevity of generated answer
 
-) -> TensorType[()]:
+) -> Float['']:
     """
     einops
 
@@ -127,7 +127,7 @@ def conservative_regularization_loss(
     states_and_actions: Int['b n'],
     action_mask:        Bool['b n'],
     reward_min:         float = 0.
-) -> TensorType[()]:
+) -> Float['']:
 
     batch, seq_len, num_actions, device = *q_values.shape, q_values.device
     non_dataset_actions = torch.arange(num_actions, device = device) == rearrange(states_and_actions, '... -> ... 1')
